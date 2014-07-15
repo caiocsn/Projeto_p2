@@ -1,36 +1,36 @@
 #include <QDataStream>
-#include <file.h>
 #include <QBitArray>
-#include <QDebug>
 #include <QTextStream>
+#include <QDebug>
 #include <iostream>
 #include <vector>
+#include <File.h>
 
-File::File(){
-    this->_name = "";
-    this->_path = "";
+File::File() {
+    m_path = "";
+    m_filename = "";
 }
 
 File::File(QString path, QString filename) {
-    this->_name = filename;
-    this->_path = path;
+    m_path = path;
+    m_filename = filename;
 }
 
 File::~File() {
-    this->_path.clear();
-    this->_name.clear();
+    m_path.clear();
+    m_filename.clear();
 }
 
 QByteArray File::read() {
-    QFile file(this->_path + this->_name);
+    QFile file(m_path + m_filename);
     file.open(QIODevice::ReadOnly);
 
-    QTextStream aux(&file);
-    QString toString = aux.readAll();
-    QByteArray qba;
-    qba.append(toString);
+    QTextStream in(&file);
+    QString string = in.readAll();
+    QByteArray byteArray;
+    byteArray.append(string);
 
-    return qba;
+    return byteArray;
 }
 
 

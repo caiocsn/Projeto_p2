@@ -1,58 +1,55 @@
-#include <compress.h>
+#include "Compress.h"
 #include <QVariant>
 #include <QBitArray>
-#include <QDebug>
 
 Compress::Compress(QString pathFile) {
-    this->_path = pathFile;
-    this->_fileName = pathFile;
-    // Fazendo tratamento de String, separação de path e nome do arquivo
+    m_path = pathFile;
+    m_fileName = pathFile;
     for (int i = pathFile.size() -1; i >= 0; --i) {
         if (pathFile.at(i) == '/') {
-            this->_path.remove(i, pathFile.size()-i);
-            this->_path.append("/");
-            this->_fileName.remove(0,i+1);
+            m_path.remove(i, pathFile.size()-i);
+            m_path.append("/");
+            m_fileName.remove(0,i+1);
             break;
         }
     }
 }
 
 Compress::Compress(QString pathFile, QString pathCompressedFile, QString uncompressDirectory) {
-    this->_path = pathFile;
-    this->_fileName = pathFile;
-    this->_compressedFileName = pathCompressedFile;
-    this->_uncompressDirectory = uncompressDirectory;
+    m_path = pathFile;
+    m_fileName = pathFile;
+    m_compressedFileName = pathCompressedFile;
+    m_uncompressDirectory = uncompressDirectory;
 
-    for(int i = pathFile.size() -1; i >= 0; --i) {
+    for (int i = pathFile.size() -1; i >= 0; --i) {
         if (pathFile.at(i) == '/') {
-            this->_path.remove(i, pathFile.size()-i);
-            this->_path.append("/");
-            this->_fileName.remove(0,i+1);
+            m_path.remove(i, pathFile.size()-i);
+            m_path.append("/");
+            m_fileName.remove(0,i+1);
             break;
         }
     }
 
-    if(this->_uncompressDirectory != ""
-            && this->_uncompressDirectory.at(this->_uncompressDirectory.size()-1) != '/') {
-        this->_uncompressDirectory.append('/');
-    }
-    else if(this->_uncompressDirectory == "") {
-        this->_uncompressDirectory = this->_path;
+    if (m_uncompressDirectory != ""
+            && m_uncompressDirectory.at(m_uncompressDirectory.size()-1) != '/') {
+        m_uncompressDirectory.append('/');
+    } else if (m_uncompressDirectory == "") {
+        m_uncompressDirectory = m_path;
     }
 }
 
 Compress::~Compress() {
-    this->_fileName = "";
-    this->_path = "";
+    m_fileName = "";
+    m_path = "";
 }
 
 bool Compress::uncompress() {
-    File * f = new File(this->_path, this->_fileName);
+    File * f = new File(m_path, m_fileName);
     QByteArray qba = f->read();
     if (qba != NULL) {
         QString size;
         size = qba.mid(0, 3);
-        // Traduz c1 e c2 os tamanhos da árvore e do array (usando unicode)
+        // Traduz c1 e c2 os tamanhos da árvore e do array
         int c1 = size.at(0).unicode();
         int c2 = size.at(1).unicode();
         size.clear();
@@ -66,7 +63,7 @@ bool Compress::uncompress() {
         s1.clear();
         s2.clear();
 
-        for(int i = 0; i < 16; ++i) {
+        for (int i = 0; i < 16; ++i) {
             if (i < 3) {
                 s1.append(size.at(i));
             } else {
@@ -121,41 +118,41 @@ bool Compress::uncompress() {
             }
         }
 
-        f->write(decoded, this->_uncompressDirectory + this->_fileName);
-        qDebug() << namefile + " descompactado com sucesso";
+        f->write(decoded, m_uncompressDirectory + namefile);
+        qDebug() << namefile + " descompactado";
 
         return true;
     } else {
-        qDebug() << "Erro: arquivo a ser descompactado não encontrado";
+        qDebug() << "Arquivo .huff não encontrado";
         return false;
     }
 }
 
 bool Compress::compress() {
-    File * f = new File(this->_path, this->_fileName);
+    File * f = new File(m_path, m_fileName);
     QByteArray qba = f->read();
     if (qba != NULL) {
-        // Contando a frequencia dos caracteres no arquivo
-        FrequencyCount * freq = new FrequencyCount(qba);
-        // Ordenando a lista de caracteres pela frequencia dos mesmos
-        QList<Frequency> ordered = freq->order();
-        // Criando a árvore de Huffman
-        Huffman * huff = new Huffman(ordered);
-        Tree * tree = huff->buildTree();
+        // Count the frequence in qba file
+        CountOccurrence * co = new CountOccurrence(qba);
+        // Take the ordered frequency list
+        QList<Occurrence> occur = co->orderByOccurrence();
+        // Create a new Huffman Tree with the ordered list
+        HuffmanTree * cht = new HuffmanTree(occur);
+        // Take the huffman tree
+        Tree * tree = cht->createTree();
         tree->createRep();
-        // Criando a tabela para a árvore huff
-        huff->buildHash(tree);
+        //build hash table for qba file
+        cht->createHash(tree);
 
         //adiciona o código de cada elemento de qba no arquivo data
         QString data;
         for (int i = 0; i < qba.size(); ++i) {
             //Fazendo codificação
-            QString pathNode = huff->getHash()->value(qba.at(i));
+            QString pathNode = cht->hash()->value(qba.at(i));
             data.append(pathNode);
         }
 
         //fechando os blocos de 8 na string data
-        //calculando o tamanho do lixo (complemento)
         int garbageSize = 8 - data.size()%8;
         if (garbageSize == 8) {
             garbageSize = 0;
@@ -164,7 +161,7 @@ bool Compress::compress() {
             data.append("0");
         }
 
-        // Convertendo o conteúdo para inteiro e armazenando no encoded
+        // Convertendo para inteiro e armazenando no encoded
         bool ok;
         QByteArray encoded;
         for (int i = 0; i < data.size(); i+=8) {
@@ -172,7 +169,7 @@ bool Compress::compress() {
             encoded.append(QChar(h.toInt(&ok, 2)));
         }
 
-        // Calculando tamanho da arvore e do lixo e os transforma em binário
+        //calculando tamanho da arvore
         QString binaryGarbageSize = QString::number(garbageSize,2);
         QString binaryTreeSize = QString::number(tree->rep().size(),2);
         int zeros = 16 - (binaryGarbageSize.size() + binaryTreeSize.size());
@@ -191,24 +188,22 @@ bool Compress::compress() {
         toWrite.clear();
         toWrite.append(QChar(h1));
         toWrite.append(QChar(h2));
-        toWrite.append(this->_fileName);
+        toWrite.append(m_fileName);
 
-        // Adicionando '#' após o nome do arquivo
-        for (int i = this->_fileName.size(); i < 128; ++i ) {
+        for (int i = m_fileName.size(); i < 128; ++i ) {
             toWrite.append("#");
         }
 
-        //Adicionando a árvore e o conteúdo
         toWrite.append(tree->rep());
         toWrite.append(encoded);
 
-        f->write(toWrite, this->_path + this->_compressedFileName);
+        f->write(toWrite, m_path + m_compressedFileName);
 
-        qDebug() << "Arquivo comprimido com sucesso";
+        qDebug() << m_fileName << " comprimido";
 
         return true;
     } else {
-        qDebug() << "Erro: Arquivo não encontrado";
+        qDebug() << "Arquivo não encontrado";
 
         return false;
     }

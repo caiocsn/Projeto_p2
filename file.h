@@ -10,7 +10,6 @@ public:
     File();
     File(QString path, QString filename);
     ~File();
-    void split();
     QByteArray read();
     void write(QByteArray byteArray, QString file);
 private:

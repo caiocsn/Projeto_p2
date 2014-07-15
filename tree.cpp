@@ -17,7 +17,7 @@ void Tree::verifyChar(QString characters, Node * root) {
     QVariant v = character;
     bool ok;
 
-    unsigned char character1 = v.toInt(&ok);
+    char character1 = v.toInt(&ok);
 
 
     if (character1 == '(') {
@@ -65,7 +65,7 @@ void Tree::verifyChar(QString characters, Node * root) {
                 QChar character2 = characters.at(1);
                 v = character2;
                 bool ok;
-                unsigned char character3 = v.toInt(&ok);
+                char character3 = v.toInt(&ok);
 
                 node->setKey(character3);
                 characters.remove(0,1);

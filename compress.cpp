@@ -1,6 +1,7 @@
 #include "Compress.h"
 #include <QVariant>
 #include <QBitArray>
+#include <QDebug>
 
 Compress::Compress(QString pathFile) {
     m_path = pathFile;
@@ -48,66 +49,54 @@ bool Compress::uncompress() {
     QByteArray qba = f->read();
     if (qba != NULL) {
         QString size;
-        size = qba.mid(0, 3);
-        // Traduz c1 e c2 os tamanhos da árvore e do array
-        int c1 = size.at(0).unicode();
-        int c2 = size.at(1).unicode();
-        size.clear();
+        size = qba.mid(0, 2);
+        qDebug() << "Arquivo a ser descomprimido" << qba << "<<<FIM>>>";
 
-        // Os transforma em binário e completa com zeros através da função fill
-        QString s1 = fill(QString::number(c1, 2));
-        QString s2 = fill(QString::number(c2, 2));
-        size.append(s1);
-        size.append(s2);
+        int garbageSize = size.at(0).unicode();
+        int treeSize = size.at(1).unicode();
 
-        s1.clear();
-        s2.clear();
+        qDebug() << "garbageSize" << garbageSize;
+        qDebug() << "treeSize" << treeSize;
 
-        for (int i = 0; i < 16; ++i) {
-            if (i < 3) {
-                s1.append(size.at(i));
-            } else {
-                s2.append(size.at(i));
-            }
-        }
-        //Obtem o tamanho do "lixo" e da árvore
-        bool ok;
-        int garbageSize = s1.toInt(&ok, 2);
-        int treeSize = s2.toInt(&ok, 2);
-
-        // Decodifica o nome do arquivo
         QString namefile;
-        for (int i = 3; i < 130; ++i) {
+        for (int i = 2; i < 130 ; ++i) {
             if (qba[i] == '#') {
                 break;
             }
             namefile.append(qba.at(i));
         }
 
-        // Recria a árvore apartir do elemento 131
+        qDebug() << "namefile" << namefile;
         QString treeRep;
-        treeRep = qba.mid(131, treeSize);
-
+        treeRep = qba.mid(130, treeSize);
+        qDebug() << "treeRep" << treeRep.size();
         Tree * tr = new Tree(treeRep);
+        HuffmanTree op;
+        op.createHash(tr);
+        op.showHash();
+        // Arvore OK
 
-        //Decodifica o conteúdo(o arquivo em si)
+
         QString content;
-        QString contentAux = qba.mid(treeSize+131, qba.size());
+        QString contentAux = qba.mid(treeSize+130, qba.size());
         for (int i = 0; i < contentAux.size(); ++i) {
             QChar simbol = contentAux.at(i);
             int unicode = simbol.unicode();
             content.append(fill(QString::number(unicode, 2)));
+            qDebug() << content;
         }
-
-        //Através do arquivo content e da árvore reconstruida, faz a descompactação
+        qDebug() << "content:" << content;
         QByteArray decoded;
         Node * n = tr->root();
-        for (int i = 0; i <= content.size()-garbageSize; ++i) {
-            if (n->isLeaf()) {
+
+
+        for (int i = 0; i <= content.size()-garbageSize; i++) {
+            if (n->key()) {
                 decoded.append(n->key());
                 n = tr->root();
-                --i;
-            } else {
+                i--;
+            }
+            else {
                 if (content.at(i) == '0') {
                     n = n->left();
                 } else if (content.at(i) == '1') {
@@ -117,8 +106,8 @@ bool Compress::uncompress() {
                 }
             }
         }
-
-        f->write(decoded, m_uncompressDirectory + namefile);
+        qDebug() << decoded;
+        f->write(decoded, m_uncompressDirectory + "out.txt");
         qDebug() << namefile + " descompactado";
 
         return true;
@@ -132,27 +121,19 @@ bool Compress::compress() {
     File * f = new File(m_path, m_fileName);
     QByteArray qba = f->read();
     if (qba != NULL) {
-        // Count the frequence in qba file
         CountOccurrence * co = new CountOccurrence(qba);
-        // Take the ordered frequency list
         QList<Occurrence> occur = co->orderByOccurrence();
-        // Create a new Huffman Tree with the ordered list
         HuffmanTree * cht = new HuffmanTree(occur);
-        // Take the huffman tree
         Tree * tree = cht->createTree();
         tree->createRep();
-        //build hash table for qba file
         cht->createHash(tree);
-
-        //adiciona o código de cada elemento de qba no arquivo data
         QString data;
+
         for (int i = 0; i < qba.size(); ++i) {
-            //Fazendo codificação
             QString pathNode = cht->hash()->value(qba.at(i));
             data.append(pathNode);
         }
 
-        //fechando os blocos de 8 na string data
         int garbageSize = 8 - data.size()%8;
         if (garbageSize == 8) {
             garbageSize = 0;
@@ -160,34 +141,34 @@ bool Compress::compress() {
         for (int i = 0; i < garbageSize; ++i) {
             data.append("0");
         }
-
-        // Convertendo para inteiro e armazenando no encoded
+        QBitArray toByte;
+        toByte.resize(data.size());
+        for (int i = 0; i < data.size(); ++i) {
+            if (data.at(i) == '0') {
+                toByte[i] = true;
+            }
+            else {
+                toByte[i] = false;
+            }
+        }
+        qDebug() << "data/size" << data << "/" << data.size();
+        // ate aqui ta certinho
         bool ok;
         QByteArray encoded;
+        QString c;
         for (int i = 0; i < data.size(); i+=8) {
             QString h = data.mid(i,8);
+            qDebug() << "h :" << h;
             encoded.append(QChar(h.toInt(&ok, 2)));
+            qDebug() << "h2:" << QChar(h.toInt(&ok, 2)) << "//";
+            c.append(h);
         }
+        qDebug() << "encoded" << encoded << "//";
 
-        //calculando tamanho da arvore
-        QString binaryGarbageSize = QString::number(garbageSize,2);
-        QString binaryTreeSize = QString::number(tree->rep().size(),2);
-        int zeros = 16 - (binaryGarbageSize.size() + binaryTreeSize.size());
-        for (int i = 0; i < zeros; ++i) {
-            binaryTreeSize.prepend(QString::number(0));
-        }
-
-        QString toBit = binaryGarbageSize;
-        toBit.append(binaryTreeSize);
-        //transformando tamanho do lixo e da arvore em inteiros
-        int h1 = toBit.mid(0,8).toInt(&ok, 2);
-        int h2 = toBit.mid(8,8).toInt(&ok, 2);
-
-        // criando arquivo towrite para ser encodado
         QByteArray toWrite;
         toWrite.clear();
-        toWrite.append(QChar(h1));
-        toWrite.append(QChar(h2));
+        toWrite.append(QChar(garbageSize));
+        toWrite.append(QChar(tree->rep().size()));
         toWrite.append(m_fileName);
 
         for (int i = m_fileName.size(); i < 128; ++i ) {
@@ -196,10 +177,10 @@ bool Compress::compress() {
 
         toWrite.append(tree->rep());
         toWrite.append(encoded);
-
+        toWrite.append('#');
         f->write(toWrite, m_path + m_compressedFileName);
 
-        qDebug() << m_fileName << " comprimido";
+        qDebug() << "Arquivo comprimido";
 
         return true;
     } else {

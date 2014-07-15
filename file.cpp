@@ -21,6 +21,7 @@ File::~File() {
     m_filename.clear();
 }
 
+
 QByteArray File::read() {
     QFile file(m_path + m_filename);
     file.open(QIODevice::ReadOnly);

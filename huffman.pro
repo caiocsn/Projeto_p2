@@ -15,7 +15,7 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 
-SOURCES += \
+SOURCES += main.cpp \
     Node.cpp \
     Tree.cpp \
     Occurrence.cpp \
@@ -23,8 +23,7 @@ SOURCES += \
     File.cpp \
     CreateHuffmanTree.cpp \
     Queue.cpp \
-    Compress.cpp \
-    main.cpp
+    Compress.cpp
 
 HEADERS += \
     Node.h \

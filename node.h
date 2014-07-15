@@ -7,8 +7,8 @@
 class Node {
 public:
     Node ();
-    Node (unsigned char key, int frequency);
-    Node (unsigned char key);
+    Node (char key, int frequency);
+    Node (char key);
     Node (QChar key);
     ~Node ();
     void setRoot (Node * root);
@@ -20,7 +20,7 @@ public:
     void setFrequency(int frequency);
     int frequency();
     void setKey(char key);
-    unsigned char key();
+    char key();
     bool isLeaf();
     void setNext(Node * node);
     Node * next();
@@ -33,7 +33,7 @@ private:
     Node * m_left;
     Node * m_right;
     Node * m_next;
-    unsigned char m_key;
+    char m_key;
     int m_frequency;
     int m_height;
     QString m_path;

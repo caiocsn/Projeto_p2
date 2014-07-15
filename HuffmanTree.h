@@ -19,19 +19,19 @@ public:
     Tree * tree();
     void setTree(Tree * t);
     Tree * createTree();
-    void setHash(QHash<unsigned char, QString> * hash);
-    QHash<unsigned char, QString> * hash();
+    void setHash(QHash<char, QString> * hash);
+    QHash<char, QString> *hash();
     void createHash(Tree * t);
     void showHash();
 
 private:
     void addNodeToHash(Node * node, QString path);
-    void addNodeToHash(unsigned char key, QString path);
+    void addNodeToHash(char key, QString path);
 
 private:
     Queue * m_occurrences;
     Tree * m_tree;
-    QHash<unsigned char, QString> * m_hash;
+    QHash<char, QString> * m_hash;
 };
 
 #endif // HUFFMANTREE_H
